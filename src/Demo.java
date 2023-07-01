@@ -17,7 +17,7 @@ public class Demo implements Trackable {    // Demo needs to be Trackable!
 
     @Override
     public int currentProgress() {
-        // In a real example 'i' would be calculated in some way e.g. (int) (filesCopied / allFiles)
+        // In a real example 'i' would be calculated in some way e.g. (int) ((filesCopied / allFiles) * 100)
         return i;
     }
 
