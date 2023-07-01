@@ -1,6 +1,6 @@
 # Progress
 
-This is a simple library for adding a console progress counter to your project.
+This is a simple library for adding one or multiple console progress counter(s) to your project.
 
 ### I want to use and/or adapt this project
 
