@@ -14,19 +14,24 @@ public class Progress {
             @Override
             public void run() {
                 super.run();
-                System.out.print("Progress" + (description.isBlank() ? "" : "[" + description + "]") + ": ");
 
                 int currentProgress = trackable.currentProgress();
-                System.out.print(currentProgress + "%");
+                String s = "";
+
+                long startTime = System.currentTimeMillis();
 
                 while(currentProgress < 100) {
                     int currentProgressTemp = trackable.currentProgress();
 
                     if(currentProgress != currentProgressTemp) {
-                        System.out.print("\b".repeat(String.valueOf(currentProgress).length() + 1));
+                        System.out.print("\b".repeat(s.length()));
 
                         currentProgress = currentProgressTemp;
-                        System.out.print(currentProgress + "%");
+                        s = "\u001B[32mProgress" + (description.isBlank() ? "" : "[" + description + "]") + ": " +
+                                currentProgress + "%  " + getTimeString(startTime, currentProgress) +
+                                "\u001B[0m";
+
+                        System.out.print(s);
                     }
 
                     try {
@@ -82,6 +87,8 @@ public class Progress {
                         // stop if no minimum found
                         .orElse(100);
 
+                long startTime = System.currentTimeMillis();
+
                 while(minProgress < 100) {
                     minProgress = trackables.stream()
                             .map(Trackable::currentProgress)
@@ -89,14 +96,17 @@ public class Progress {
                             // stop if no minimum found
                             .orElse(100);
 
-                    String currString = transformedDescriptions.stream()
-                            .map(d -> d + trackables.get(transformedDescriptions.indexOf(d)).currentProgress() + "%   ")
-                            .collect(Collectors.joining());
+
+
+                    String currString = "\u001B[32m" + transformedDescriptions.stream()
+                            .map(d -> d + trackables.get(transformedDescriptions.indexOf(d)).currentProgress() + "%  ")
+                            .collect(Collectors.joining("", "", getTimeString(startTime, minProgress)));
 
                     if(!currString.equals(oldString)) {
                         System.out.print("\b".repeat(oldString.length()));
 
                         oldString = currString;
+
                         System.out.print(currString);
                     }
 
@@ -108,5 +118,30 @@ public class Progress {
         }.start();
 
         return trackables;
+    }
+
+    private static String getTimeString(long startTime, int minProgress) {
+        long currTime = System.currentTimeMillis();
+        long estimatedTimeLeft = ((currTime - startTime) / Math.max(minProgress, 1)) * (100 - minProgress);
+
+        return "   \u001B[34mTime: " +
+                formatTimeMillis(currTime - startTime) +
+                " | " +
+                formatTimeMillis(estimatedTimeLeft) +
+                "\u001B[0m";
+    }
+
+    private static String formatTimeMillis(long timeMillis) {
+        long y = ((((timeMillis / 1000) / 60) / 60) / 24) / 365;
+        long d = ((((timeMillis / 1000) / 60) / 60) / 24) % 365;
+        long h = (((timeMillis / 1000) / 60) / 60) % 24;
+        long min = ((timeMillis / 1000) / 60) % 60;
+        long s = (timeMillis / 1000) % 60;
+
+        return (y == 0 ? "" : y + "y") +
+                (d == 0 ? "" : (y > 0 ? "0".repeat(3 - String.valueOf(d).length()) + d : d) + "d") +
+                (h == 0 ? "" : (d > 0 ? "0".repeat(2 - String.valueOf(h).length()) + h : h) + ":") +
+                (min == 0 ? "" : (h > 0 ? "0".repeat(2 - String.valueOf(min).length()) + min : min) + ":") +
+                (h == 0 && min == 0 ? s + "s" : s);
     }
 }
