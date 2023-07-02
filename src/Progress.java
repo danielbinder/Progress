@@ -15,9 +15,7 @@ public class Progress {
             public void run() {
                 super.run();
                 System.out.print("Progress" +
-                                         (description.isBlank() ? "" : "[") +
-                                         description +
-                                         (description.isBlank() ? "" : "]") +
+                                         (description.isBlank() ? "" : "[" + description + "]") +
                                          ": ");
 
                 int currentProgress = trackable.currentProgress();
