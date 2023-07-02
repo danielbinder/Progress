@@ -14,9 +14,7 @@ public class Progress {
             @Override
             public void run() {
                 super.run();
-                System.out.print("Progress" +
-                                         (description.isBlank() ? "" : "[" + description + "]") +
-                                         ": ");
+                System.out.print("Progress" + (description.isBlank() ? "" : "[" + description + "]") + ": ");
 
                 int currentProgress = trackable.currentProgress();
                 System.out.print(currentProgress + "%");
