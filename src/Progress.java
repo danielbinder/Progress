@@ -43,6 +43,7 @@ public class Progress {
 
     /** Multiprogress */
 
+    @SafeVarargs
     public static <T extends Trackable> List<T> of(T...trackables) {
         return of(Arrays.stream(trackables).toList());
     }
