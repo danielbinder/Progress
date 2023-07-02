@@ -25,6 +25,11 @@ Regardless of the license, it would be cool if you somehow mentioned, that you g
    - Update rate of the counter is hard coded to 100ms.
    - The goal of complicated progress update loop is to reduce IO access as much as possible.
    - The progress will be shown as a percentage (int)
+   - Time is `elapsed time | estimated time left`
 
 ### Demo
 The [Demo.java](https://github.com/danielbinder/Progress/blob/master/src/Demo.java) demonstrates some usages described above, where the progress is determined by counters that increase randomly.
+
+Here you can see how it should look in your console:
+
+![demo.png](demo.png)
