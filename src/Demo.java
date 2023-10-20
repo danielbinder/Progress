@@ -1,45 +1,41 @@
+import java.util.List;
 import java.util.Random;
+import java.util.stream.IntStream;
 
-public class Demo implements Trackable {    // Demo needs to be Trackable!
-    private int i = 0;
-
+public class Demo {
     public void count() {
         Random r = new Random();
 
-        // Simulate real progress by increasing i
-        for(i = 0; i < 100; i++) {
-            try {
-                // Sleep up to 1s
-                Thread.sleep(r.nextInt(1, 1000));
-            } catch(InterruptedException ignored) {}
-        }
-    }
-
-    @Override
-    public int currentProgress() {
-        // In a real example 'i' would be calculated in some way e.g. (int) ((filesCopied / allFiles) * 100)
-        return i;
+        // Simulate real progress
+        try {
+            // Sleep up to 1s
+            Thread.sleep(r.nextInt(1, 1000));
+        } catch(InterruptedException ignored) {}
     }
 
     public static void main(String[] args) {
         System.out.println("Single counter demo:");
-        Progress.of(new Demo())     // Returns the Demo object passed in
-                .count();
+        List<Demo> demos = IntStream.range(0, 100)
+                .mapToObj(i -> new Demo())
+                .toList();
 
+        for(Demo d : Progress.of(demos)) d.count();
+
+        // My console won't update to 100% unless I add this
         try {
-            // Without this, my console doesn't see the need to update to 100%
             Thread.sleep(100);
         } catch(InterruptedException ignored) {}
 
         System.out.println("\n\nMulticounter demo:");
-        Progress.of(new Demo(),
-                    new Demo(),
-                    new Demo(),
-                    new Demo(),
-                    new Demo())
-                // Returns List<Demo> objects passed in
-                .stream()
+        Progress.reset();
+        IntStream.range(0, 5)
+                .mapToObj(l -> IntStream.range(0, 100)
+                        .mapToObj(i -> new Demo())
+                        .toList())
                 .parallel()
-                .forEach(Demo::count);
+                // Register multiple lists
+                .forEach(list -> {
+                    for(Demo d : Progress.of(list)) d.count();
+                });
     }
 }

@@ -1,105 +1,100 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
-public class Progress {
-    public static <T extends Trackable> T of(T trackable) {
-        return of("", trackable);
+public class Progress<T> implements Iterable<T> {
+    private static final Map<String, Integer> progressMap = new HashMap<>();
+    private static int i = 0;
+    private static long startTime;
+    private final String description;
+    private final List<T> list;
+
+    static {
+        reset();
     }
 
-    public static <T extends Trackable> T of(String description, T trackable) {
+    private Progress(String description, List<T> list) {
+        progressMap.put(description, 0);
+
+        this.description = description;
+        this.list = list;
+    }
+
+    public static <T> Progress<T> of(String description, List<T> list) {
+        return new Progress<>(description, list);
+    }
+
+    public static <T> Progress<T> of(List<T> list) {
+        return of(String.valueOf(i++), list);
+    }
+
+    public static <T> Progress<T> of(String description, Collection<T> collection) {
+        return of(description, collection.stream().toList());
+    }
+
+    public static <T> Progress<T> of(Collection<T> collection) {
+        return of(collection.stream().toList());
+    }
+
+    public static <T> Progress<T> of(String description, T...array) {
+        return of(description, Arrays.asList(array));
+    }
+
+    public static <T> Progress<T> of(T...array) {
+        return of(Arrays.asList(array));
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return new Iterator<>() {
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < list.size();
+            }
+
+            @Override
+            public T next() {
+                updateProgress(description, (100 * i) / Math.max(1, list.size() - 1));
+
+                return list.get(i++);
+            }
+        };
+    }
+
+    private static void updateProgress(String description, int percentage) {
+        progressMap.put(description, percentage);
+    }
+
+    public static void reset() {
+        progressMap.clear();
+        i = 0;
+        startTime = System.currentTimeMillis();
         new Thread() {
             @Override
             public void run() {
                 super.run();
 
-                int currentProgress = trackable.currentProgress();
-                String s = "";
-
-                long startTime = System.currentTimeMillis();
-
-                while(currentProgress < 100) {
-                    int currentProgressTemp = trackable.currentProgress();
-
-                    if(currentProgress != currentProgressTemp) {
-                        System.out.print("\b".repeat(s.length()));
-
-                        currentProgress = currentProgressTemp;
-                        s = "\u001B[32mProgress" + (description.isBlank() ? "" : "[" + description + "]") + ": " +
-                                currentProgress + "%  " + getTimeString(startTime, currentProgress) +
-                                "\u001B[0m";
-
-                        System.out.print(s);
-                    }
-
+                while(progressMap.isEmpty()) {
                     try {
                         Thread.sleep(100);
                     } catch(InterruptedException ignored) {}
                 }
-            }
-        }.start();
-
-        return trackable;
-    }
-
-    /** Multiprogress */
-
-    @SafeVarargs
-    public static <T extends Trackable> List<T> of(T...trackables) {
-        return of(Arrays.stream(trackables).toList());
-    }
-
-    public static <T extends Trackable> List<T> of(List<T> trackables) {
-        return of(trackables.stream()
-                          .map(t -> String.valueOf(trackables.indexOf(t)))
-                          .toList(),
-                  trackables);
-    }
-
-    public static <T extends Trackable> List<T> of(Map<T, String> trackablesWithDescriptions) {
-        List<String> descriptions = new ArrayList<>();
-        List<T> trackables = new ArrayList<>();
-
-        trackablesWithDescriptions.forEach((k, v) -> {
-            trackables.add(k);
-            descriptions.add(v);
-        });
-
-        return of(descriptions, trackables);
-    }
-
-    public static <T extends Trackable> List<T> of(List<String> descriptions, List<T> trackables) {
-        List<String> transformedDescriptions = descriptions.stream()
-                .map(d -> "Progress[" + d + "]: ")
-                .toList();
-
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
 
                 String oldString = "";
-                int minProgress = trackables.stream()
-                        .map(Trackable::currentProgress)
+                int minProgress = progressMap.values().stream()
                         .min(Integer::compareTo)
                         // stop if no minimum found
                         .orElse(100);
 
-                long startTime = System.currentTimeMillis();
-
                 while(minProgress < 100) {
-                    minProgress = trackables.stream()
-                            .map(Trackable::currentProgress)
+                    minProgress = progressMap.values().stream()
                             .min(Integer::compareTo)
                             // stop if no minimum found
                             .orElse(100);
 
-
-
-                    String currString = "\u001B[32m" + transformedDescriptions.stream()
-                            .map(d -> d + trackables.get(transformedDescriptions.indexOf(d)).currentProgress() + "%  ")
+                    String currString = "\u001B[32m" + progressMap.keySet().stream()
+                            .map(d -> "[" + d + "] " + progressMap.get(d) + "%  ")
                             .collect(Collectors.joining("", "", getTimeString(startTime, minProgress)));
 
                     if(!currString.equals(oldString)) {
@@ -116,8 +111,6 @@ public class Progress {
                 }
             }
         }.start();
-
-        return trackables;
     }
 
     private static String getTimeString(long startTime, int minProgress) {
