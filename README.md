@@ -13,6 +13,7 @@ Regardless of the license, it would be cool if you somehow mentioned, that you g
    ![lib.png](lib.png)
 2) Wrap the Object you want to track in `Progresss.of("optional description", someObj)` wherever you want to consume it e.g.
    - You can use it anywhere, where you would use an iterator of a Collection or an Array, since it literally returns one
+   - The DESCRIPTIONS are used as a key to the progress map, SO THEY NEED TO BE UNIQUE
    - If you don't add a description, an incrementing counter will be added instead
    - ```
      for(Thing t : Progress.of(thingList)) {
