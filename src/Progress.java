@@ -1,21 +1,34 @@
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class Progress<T> implements Iterable<T> {
-    private static final Map<String, Integer> progressMap = new HashMap<>();
-    private static int i = 0;
-    private static long startTime;
-    private final String description;
-    private final List<T> list;
+    private static final Map<Integer, Integer> progressMap = new HashMap<>();
+    private static final Map<Integer, String> descriptionMap = new HashMap<>();
+    private static final AtomicInteger i = new AtomicInteger();
+    private final int counterIndex;
+    public final String description;
+    public final List<T> list;
 
     static {
         reset();
     }
 
     private Progress(String description, List<T> list) {
-        progressMap.put(description, 0);
+        counterIndex = i.getAndIncrement();
+        progressMap.put(counterIndex, 0);
+        descriptionMap.put(counterIndex, description);
 
         this.description = description;
+        this.list = list;
+    }
+
+    private Progress(List<T> list) {
+        counterIndex = i.getAndIncrement();
+        progressMap.put(counterIndex, 0);
+
+        description = String.valueOf(counterIndex);
+        descriptionMap.put(counterIndex, description);
         this.list = list;
     }
 
@@ -24,7 +37,7 @@ public class Progress<T> implements Iterable<T> {
     }
 
     public static <T> Progress<T> of(List<T> list) {
-        return of(String.valueOf(i++), list);
+        return new Progress<>(list);
     }
 
     public static <T> Progress<T> of(String description, Collection<T> collection) {
@@ -35,10 +48,12 @@ public class Progress<T> implements Iterable<T> {
         return of(collection.stream().toList());
     }
 
+    @SafeVarargs
     public static <T> Progress<T> of(String description, T...array) {
         return of(description, Arrays.asList(array));
     }
 
+    @SafeVarargs
     public static <T> Progress<T> of(T...array) {
         return of(Arrays.asList(array));
     }
@@ -55,62 +70,55 @@ public class Progress<T> implements Iterable<T> {
 
             @Override
             public T next() {
-                updateProgress(description, (100 * i) / Math.max(1, list.size() - 1));
+                progressMap.put(counterIndex, (100 * i) / Math.max(1, list.size() - 1));
 
                 return list.get(i++);
             }
         };
     }
 
-    private static void updateProgress(String description, int percentage) {
-        progressMap.put(description, percentage);
-    }
-
     public static void reset() {
         progressMap.clear();
-        i = 0;
-        startTime = System.currentTimeMillis();
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
+        i.set(1);
 
-                while(progressMap.isEmpty()) {
-                    try {
-                        Thread.sleep(100);
-                    } catch(InterruptedException ignored) {}
-                }
+        Thread.ofVirtual().start(() ->  {
+            while(progressMap.isEmpty()) {
+                try {
+                    Thread.sleep(100);
+                } catch(InterruptedException ignored) {}
+            }
 
-                String oldString = "";
-                int minProgress = progressMap.values().stream()
+            long startTime = System.currentTimeMillis();
+
+            String oldString = "";
+            int minProgress = progressMap.values().stream()
+                    .min(Integer::compareTo)
+                    // stop if no minimum found
+                    .orElse(100);
+
+            while(minProgress < 100) {
+                minProgress = progressMap.values().stream()
                         .min(Integer::compareTo)
                         // stop if no minimum found
                         .orElse(100);
 
-                while(minProgress < 100) {
-                    minProgress = progressMap.values().stream()
-                            .min(Integer::compareTo)
-                            // stop if no minimum found
-                            .orElse(100);
+                String currString = "\u001B[32m" + progressMap.keySet().stream()
+                        .map(i -> (progressMap.size() > 1 || !descriptionMap.get(i).equals("1") ? "[" + descriptionMap.get(i) + "] " : "") + progressMap.get(i) + "%  ")
+                        .collect(Collectors.joining("", "", getTimeString(startTime, minProgress)));
 
-                    String currString = "\u001B[32m" + progressMap.keySet().stream()
-                            .map(d -> "[" + d + "] " + progressMap.get(d) + "%  ")
-                            .collect(Collectors.joining("", "", getTimeString(startTime, minProgress)));
+                if(!currString.equals(oldString)) {
+                    System.out.print("\b".repeat(oldString.length()));
 
-                    if(!currString.equals(oldString)) {
-                        System.out.print("\b".repeat(oldString.length()));
+                    oldString = currString;
 
-                        oldString = currString;
-
-                        System.out.print(currString);
-                    }
-
-                    try {
-                        Thread.sleep(100);
-                    } catch(InterruptedException ignored) {}
+                    System.out.print(currString);
                 }
+
+                try {
+                    Thread.sleep(100);
+                } catch(InterruptedException ignored) {}
             }
-        }.start();
+        });
     }
 
     private static String getTimeString(long startTime, int minProgress) {
@@ -135,6 +143,6 @@ public class Progress<T> implements Iterable<T> {
                 (d == 0 ? "" : (y > 0 ? "0".repeat(3 - String.valueOf(d).length()) + d : d) + "d") +
                 (h == 0 ? "" : (d > 0 ? "0".repeat(2 - String.valueOf(h).length()) + h : h) + ":") +
                 (min == 0 ? "" : (h > 0 ? "0".repeat(2 - String.valueOf(min).length()) + min : min) + ":") +
-                (h == 0 && min == 0 ? s + "s" : s);
+                (h == 0 && min == 0 ? s + "s" : (s < 10 ? "0" + s : s));
     }
 }

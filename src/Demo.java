@@ -3,19 +3,21 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 public class Demo {
-    public void count() {
-        Random r = new Random();
+    private static final int MAX_SLEEP_MS = 1000;
+    private static final int MAX_ELEMENTS_IN_LIST = 1234;
+    private static final Random r = new Random();
 
-        // Simulate real progress
+
+    public void count() {
         try {
-            // Sleep up to 1s
-            Thread.sleep(r.nextInt(1, 1000));
+            // Simulate real work by sleeping
+            Thread.sleep(r.nextInt(1, MAX_SLEEP_MS));
         } catch(InterruptedException ignored) {}
     }
 
     public static void main(String[] args) {
         System.out.println("Single counter demo:");
-        List<Demo> demos = IntStream.range(0, 100)
+        List<Demo> demos = IntStream.range(0, 123)
                 .mapToObj(i -> new Demo())
                 .toList();
 
@@ -29,13 +31,15 @@ public class Demo {
         System.out.println("\n\nMulticounter demo:");
         Progress.reset();
         IntStream.range(0, 5)
-                .mapToObj(l -> IntStream.range(0, 100)
+                // Random amount of list elements
+                .mapToObj(l -> IntStream.range(0, r.nextInt(MAX_ELEMENTS_IN_LIST))
                         .mapToObj(i -> new Demo())
                         .toList())
-                .parallel()
-                // Register multiple lists
-                .forEach(list -> {
-                    for(Demo d : Progress.of(list)) d.count();
-                });
+                // Register multiple counters in different threads
+                .forEach(list ->
+                    Thread.ofPlatform().start(() -> {
+                        for(Demo d : Progress.of(list)) d.count();
+                    })
+                );
     }
 }
